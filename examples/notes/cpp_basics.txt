@@ -1,0 +1,9 @@
+C++ Basics
+
+C++ is a powerful programming language that supports multiple paradigms.
+RAII (Resource Acquisition Is Initialization) is a fundamental C++ pattern.
+Smart pointers like unique_ptr and shared_ptr help manage memory automatically.
+Move semantics allow efficient transfer of resources without copying.
+
+Modern C++ emphasizes value semantics and const correctness.
+The STL provides containers, algorithms, and iterators for common tasks.

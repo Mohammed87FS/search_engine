@@ -1,0 +1,8 @@
+Programming Concepts
+
+Object-oriented programming uses classes and inheritance.
+Functional programming emphasizes immutable data and pure functions.
+Generic programming with templates enables code reuse.
+
+Design patterns like Singleton, Factory, and Observer solve common problems.
+Clean code principles improve maintainability and readability.
