@@ -111,7 +111,9 @@ int main(int argc, char* argv[]) {
         index.clear();
         
         // Index each file
-        for (const auto& [file_path, content] : files) {
+        for (const auto& file_pair : files) {
+            const auto& file_path = file_pair.first;
+            const auto& content = file_pair.second;
             uint32_t doc_id = doc_store.add_document(file_path, content);
             auto tokens = tokenize(content);
             index.index_document(doc_id, tokens);

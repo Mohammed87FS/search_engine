@@ -73,7 +73,11 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
     }
     
     // Sort by score (descending)
-    std::vector<std::pair<uint32_t, double>> sorted_results(doc_scores.begin(), doc_scores.end());
+    std::vector<std::pair<uint32_t, double>> sorted_results;
+    sorted_results.reserve(doc_scores.size());
+    for (const auto& pair : doc_scores) {
+        sorted_results.emplace_back(pair.first, pair.second);
+    }
     std::sort(sorted_results.begin(), sorted_results.end(),
         [](const auto& a, const auto& b) { return a.second > b.second; });
     

@@ -12,7 +12,9 @@ void InvertedIndex::index_document(uint32_t doc_id, const std::vector<std::strin
     }
     
     // Add postings to the index
-    for (const auto& [term, freq] : term_counts) {
+    for (const auto& pair : term_counts) {
+        const std::string& term = pair.first;
+        uint32_t freq = pair.second;
         index_[term].emplace_back(doc_id, freq);
     }
 }
@@ -41,8 +43,8 @@ std::vector<std::string> InvertedIndex::get_all_terms() const {
     std::vector<std::string> terms;
     terms.reserve(index_.size());
     
-    for (const auto& [term, _] : index_) {
-        terms.push_back(term);
+    for (const auto& pair : index_) {
+        terms.push_back(pair.first);
     }
     
     return terms;

@@ -64,6 +64,9 @@ set_target_properties(notesearch PROPERTIES
 if(UNIX AND NOT APPLE)
     # Linux-specific
     target_link_libraries(notesearch pthread)
+elseif(MINGW)
+    # MinGW needs filesystem library
+    target_link_libraries(notesearch stdc++fs)
 endif()
 
 # Print configuration
