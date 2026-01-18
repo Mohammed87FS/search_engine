@@ -1,0 +1,6 @@
+TODO:
+- Add save/load index functionality
+- Maybe improve GUI layout
+- Add result highlighting in snippets
+- Support for more file types
+- Performance optimization for large directories

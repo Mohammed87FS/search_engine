@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
     
     std::string command = argv[1];
     
-    // Global state (in a real app, you might persist this)
+    // static state - would be better to save/load but this works for now
     static DocumentStore doc_store;
     static InvertedIndex index;
     
@@ -106,11 +106,10 @@ int main(int argc, char* argv[]) {
         std::cout << "Found " << files.size() << " indexable files.\n";
         std::cout << "Indexing...\n";
         
-        // Clear existing index
         doc_store.clear();
         index.clear();
         
-        // Index each file
+        // process each file
         for (const auto& file_pair : files) {
             const auto& file_path = file_pair.first;
             const auto& content = file_pair.second;

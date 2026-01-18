@@ -15,7 +15,7 @@ FileScanner::scan_directory(const std::filesystem::path& root_path) const {
     }
     
     try {
-        // Recursive directory iterator
+        // recursive iterator - skips permission denied errors
         for (const auto& entry : std::filesystem::recursive_directory_iterator(
                  root_path, std::filesystem::directory_options::skip_permission_denied)) {
             
@@ -33,8 +33,7 @@ FileScanner::scan_directory(const std::filesystem::path& root_path) const {
             }
         }
     } catch (const std::filesystem::filesystem_error& e) {
-        // Log error but continue
-        // In production, you might want to log this properly
+        // ignore errors for now - could add logging later
     }
     
     return files;

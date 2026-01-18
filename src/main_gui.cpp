@@ -19,23 +19,20 @@
 
 using namespace notesearch;
 
-// Global state
+// global state - TODO: maybe save/load index to file later?
 static DocumentStore g_doc_store;
 static InvertedIndex g_index;
 static std::vector<SearchResult> g_current_results;
 
-// Control IDs
+// control IDs
 #define ID_SEARCH_EDIT       1001
 #define ID_SEARCH_BUTTON     1002
 #define ID_INDEX_BUTTON       1003
-#define ID_RESULTS_LIST       1004
+#define ID_RESULTS_LIST       1004  // not used yet, might add listbox later
 #define ID_STATUS_TEXT        1005
 #define ID_RESULTS_EDIT       1006
 
-// Window procedure
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-// Helper functions
 std::wstring StringToWString(const std::string& str);
 std::string WStringToString(const std::wstring& wstr);
 void UpdateStatus(HWND hwnd, const std::string& message);
@@ -44,10 +41,9 @@ void IndexDirectory(HWND hwnd, const std::filesystem::path& dir_path);
 void PerformSearch(HWND hwnd, const std::string& query);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    // Initialize COM for folder picker
+    // need COM for folder picker dialog
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     
-    // Register window class
     const wchar_t CLASS_NAME[] = L"NoteSearchWindow";
     
     WNDCLASS wc = {};
@@ -57,9 +53,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     
-    RegisterClass(&wc);
+    if (!RegisterClass(&wc)) {
+        // should check error but whatever
+        return 0;
+    }
     
-    // Create window
+    // create main window - size is kinda arbitrary
     HWND hwnd = CreateWindowEx(
         0,
         CLASS_NAME,
@@ -76,14 +75,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
     
-    // Message loop
+    // main message loop
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
     
-    // Cleanup COM
     CoUninitialize();
     
     return 0;
@@ -92,50 +90,49 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CREATE: {
-            // Create search label
+            // search label
             CreateWindow(L"STATIC", L"Search Query:",
                 WS_VISIBLE | WS_CHILD,
                 10, 10, 100, 20,
                 hwnd, NULL, NULL, NULL);
             
-            // Create search text box
+            // search box
             CreateWindow(L"EDIT", L"",
                 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
                 10, 35, 600, 25,
                 hwnd, (HMENU)ID_SEARCH_EDIT, NULL, NULL);
             
-            // Create search button
+            // search button
             CreateWindow(L"BUTTON", L"Search",
                 WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
                 620, 33, 100, 30,
                 hwnd, (HMENU)ID_SEARCH_BUTTON, NULL, NULL);
             
-            // Create index button
+            // index button
             CreateWindow(L"BUTTON", L"Index Directory...",
                 WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
                 730, 33, 150, 30,
                 hwnd, (HMENU)ID_INDEX_BUTTON, NULL, NULL);
             
-            // Create status label
+            // status text
             CreateWindow(L"STATIC", L"Status: Ready",
                 WS_VISIBLE | WS_CHILD,
                 10, 70, 880, 20,
                 hwnd, (HMENU)ID_STATUS_TEXT, NULL, NULL);
             
-            // Create results label
             CreateWindow(L"STATIC", L"Results:",
                 WS_VISIBLE | WS_CHILD,
                 10, 100, 100, 20,
                 hwnd, NULL, NULL, NULL);
             
-            // Create results edit control (read-only, multi-line)
+            // results area - edit control works fine, listbox might be better but this is simpler
             HWND hResults = CreateWindow(L"EDIT", L"",
                 WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL | WS_HSCROLL | 
                 ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
                 10, 125, 870, 430,
                 hwnd, (HMENU)ID_RESULTS_EDIT, NULL, NULL);
             
-            // Set font for results
+            // set monospace font for results
             HFONT hFont = CreateFont(
                 16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -163,7 +160,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             }
             
             if (id == ID_INDEX_BUTTON) {
-                // Use folder picker dialog
+                // folder picker
                 BROWSEINFO bi = {};
                 bi.hwndOwner = hwnd;
                 bi.lpszTitle = L"Select Directory to Index";
@@ -181,9 +178,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 return 0;
             }
             
-            // Handle Enter key in search box
+            // enter key in search box
             if (id == ID_SEARCH_EDIT && HIWORD(wParam) == EN_CHANGE) {
-                // Could add live search here if needed
+                // could add live search here but not needed
+                // maybe later if I have time
             }
             return 0;
         }
@@ -242,7 +240,7 @@ void DisplayResults(HWND hwnd, const std::vector<SearchResult>& results) {
 
 void IndexDirectory(HWND hwnd, const std::filesystem::path& dir_path) {
     UpdateStatus(hwnd, "Scanning directory...");
-    UpdateWindow(hwnd);
+    UpdateWindow(hwnd);  // force update
     
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -252,11 +250,11 @@ void IndexDirectory(HWND hwnd, const std::filesystem::path& dir_path) {
     UpdateStatus(hwnd, "Indexing " + std::to_string(files.size()) + " files...");
     UpdateWindow(hwnd);
     
-    // Clear existing index
+    // clear old index
     g_doc_store.clear();
     g_index.clear();
     
-    // Index each file
+    // index files
     for (const auto& file_pair : files) {
         const auto& file_path = file_pair.first;
         const auto& content = file_pair.second;
@@ -274,8 +272,7 @@ void IndexDirectory(HWND hwnd, const std::filesystem::path& dir_path) {
        << duration.count() << " ms";
     UpdateStatus(hwnd, ss.str());
     
-    // Clear results
-    DisplayResults(hwnd, {});
+    DisplayResults(hwnd, {});  // clear results
 }
 
 void PerformSearch(HWND hwnd, const std::string& query) {
@@ -287,7 +284,7 @@ void PerformSearch(HWND hwnd, const std::string& query) {
     }
     
     if (query.empty()) {
-        return;
+        return;  // nothing to search
     }
     
     UpdateStatus(hwnd, "Searching...");
@@ -296,7 +293,7 @@ void PerformSearch(HWND hwnd, const std::string& query) {
     auto start = std::chrono::high_resolution_clock::now();
     
     SearchEngine engine(g_index, g_doc_store);
-    g_current_results = engine.search(query, 20);
+    g_current_results = engine.search(query, 20);  // limit to 20 results
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

@@ -12,24 +12,24 @@ SearchEngine::SearchEngine(const InvertedIndex& index, const DocumentStore& doc_
     : index_(index), doc_store_(doc_store) {}
 
 std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t max_results) const {
-    // Tokenize query
+    // tokenize the query
     std::vector<std::string> query_terms = tokenize(query);
     if (query_terms.empty()) {
         return {};
     }
     
-    // Remove duplicate terms
+    // remove duplicates
     std::unordered_set<std::string> unique_terms(query_terms.begin(), query_terms.end());
     query_terms.assign(unique_terms.begin(), unique_terms.end());
     
-    // Find documents containing ALL terms (AND query)
+    // AND query - find docs with ALL terms
     std::unordered_map<uint32_t, double> doc_scores;
     size_t total_docs = doc_store_.size();
     
-    // Start with documents containing the first term
+    // start with first term
     const auto* first_postings = index_.get_postings(query_terms[0]);
     if (!first_postings) {
-        return {}; // No documents match
+        return {};  // no matches
     }
     
     std::unordered_set<uint32_t> candidate_docs;
@@ -37,7 +37,7 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
         candidate_docs.insert(posting.doc_id);
     }
     
-    // Intersect with documents containing other terms
+    // intersect with other terms
     for (size_t i = 1; i < query_terms.size(); ++i) {
         const auto* postings = index_.get_postings(query_terms[i]);
         if (!postings) {
@@ -49,7 +49,7 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
             term_docs.insert(posting.doc_id);
         }
         
-        // Intersection: keep only docs in both sets
+        // intersection - keep docs that are in both
         std::unordered_set<uint32_t> intersection;
         for (uint32_t doc_id : candidate_docs) {
             if (term_docs.find(doc_id) != term_docs.end()) {
@@ -59,11 +59,11 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
         candidate_docs = std::move(intersection);
         
         if (candidate_docs.empty()) {
-            return {}; // No documents match all terms
+            return {};  // no docs match all terms
         }
     }
     
-    // Calculate TF-IDF scores for matching documents
+    // calculate scores
     for (uint32_t doc_id : candidate_docs) {
         double score = 0.0;
         for (const auto& term : query_terms) {
@@ -72,7 +72,7 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
         doc_scores[doc_id] = score;
     }
     
-    // Sort by score (descending)
+    // sort by score
     std::vector<std::pair<uint32_t, double>> sorted_results;
     sorted_results.reserve(doc_scores.size());
     for (const auto& pair : doc_scores) {
@@ -81,7 +81,7 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, size_t 
     std::sort(sorted_results.begin(), sorted_results.end(),
         [](const auto& a, const auto& b) { return a.second > b.second; });
     
-    // Build result objects
+    // build results
     std::vector<SearchResult> results;
     size_t result_count = (max_results == 0) ? sorted_results.size() : 
                           std::min(max_results, sorted_results.size());
@@ -113,10 +113,10 @@ double SearchEngine::calculate_tf(const std::string& term, uint32_t doc_id) cons
         return 0.0;
     }
     
-    // Find posting for this document
+    // find the posting for this doc
     for (const auto& posting : *postings) {
         if (posting.doc_id == doc_id) {
-            // Use log-normalized TF: 1 + log(tf)
+            // log normalization: 1 + log(tf)
             return 1.0 + std::log(static_cast<double>(posting.term_freq));
         }
     }
@@ -130,7 +130,7 @@ double SearchEngine::calculate_idf(const std::string& term, size_t total_docs) c
         return 0.0;
     }
     
-    // IDF = log(N / df)
+    // standard IDF formula
     return std::log(static_cast<double>(total_docs) / static_cast<double>(df));
 }
 
@@ -140,10 +140,9 @@ std::string SearchEngine::extract_snippet(const std::string& content,
         return "";
     }
     
-    // Find first occurrence of any query term
+    // find first match (case insensitive)
     size_t first_pos = std::string::npos;
     for (const auto& term : query_terms) {
-        // Case-insensitive search
         std::string lower_content = content;
         std::transform(lower_content.begin(), lower_content.end(), lower_content.begin(), ::tolower);
         
@@ -157,8 +156,7 @@ std::string SearchEngine::extract_snippet(const std::string& content,
     }
     
     if (first_pos == std::string::npos) {
-        // No match found, return beginning of content
-        first_pos = 0;
+        first_pos = 0;  // no match, just show start
     }
     
     return notesearch::extract_snippet(content, first_pos, 80);

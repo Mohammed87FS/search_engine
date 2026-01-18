@@ -5,13 +5,13 @@
 namespace notesearch {
 
 void InvertedIndex::index_document(uint32_t doc_id, const std::vector<std::string>& tokens) {
-    // Count term frequencies in this document
+    // count frequencies first
     std::unordered_map<std::string, uint32_t> term_counts;
     for (const auto& token : tokens) {
         ++term_counts[token];
     }
     
-    // Add postings to the index
+    // add to index
     for (const auto& pair : term_counts) {
         const std::string& term = pair.first;
         uint32_t freq = pair.second;
