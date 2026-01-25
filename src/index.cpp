@@ -50,4 +50,4 @@ std::vector<std::string> InvertedIndex::get_all_terms() const {
     return terms;
 }
 
-} // namespace notesearch
+} 
