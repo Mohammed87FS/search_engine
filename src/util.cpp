@@ -8,11 +8,11 @@ namespace notesearch {
 bool should_index_file(const std::filesystem::path& file_path) {
     const std::string ext = file_path.extension().string();
     
-    // Convert to lowercase for comparison
+    
     std::string lower_ext = ext;
     std::transform(lower_ext.begin(), lower_ext.end(), lower_ext.begin(), ::tolower);
     
-    // Indexable extensions
+    // Indexable fils
     const std::vector<std::string> indexable_extensions = {
         ".txt", ".md", ".markdown", ".cpp", ".hpp", ".c", ".h",
         ".java", ".py", ".js", ".ts", ".rs", ".go", ".rb", ".php",
@@ -40,8 +40,8 @@ std::string extract_snippet(const std::string& text, size_t position, size_t con
         return "";
     }
     
-    size_t start = (position > context_size) ? position - context_size : 0;
-    size_t end = std::min(position + context_size, text.size());
+    size_t start = (position > context_size) ? position - context_size : 0; // wenn position größer als context_size, dann position - context_size, sonst 0
+    size_t end = std::min(position + context_size, text.size()); // wenn position + context_size größer als text.size(), dann text.size(), sonst position + context_size
     
     std::string snippet = text.substr(start, end - start);
     
@@ -56,4 +56,4 @@ std::string extract_snippet(const std::string& text, size_t position, size_t con
     return snippet;
 }
 
-} // namespace notesearch
+} 
