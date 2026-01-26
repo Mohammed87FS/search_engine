@@ -1,5 +1,17 @@
 # NoteSearch
 
-A local full-text search engine written in C++.
+local full-text search, written in C++.
 
-To run: `.\build\notesearch_gui.exe` or double-click `build\notesearch_gui.exe` in File Explorer.
+
+## Building
+
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+im terminal einfach das ausfuehren :
+
+build\bin\notesearch_gui.exe
+

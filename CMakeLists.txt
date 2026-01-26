@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(NoteSearch VERSION 1.0.0 LANGUAGES CXX)
 
+# Windows-only project
+if(NOT WIN32)
+    message(FATAL_ERROR "This project is Windows-only")
+endif()
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,7 +44,7 @@ set(SOURCES
     src/index.cpp
     src/search.cpp
     src/file_scanner.cpp
-    src/main.cpp
+    src/main_gui.cpp
 )
 
 # Header files
@@ -52,22 +57,32 @@ set(HEADERS
     include/util.hpp
 )
 
-# Create executable
-add_executable(notesearch ${SOURCES} ${HEADERS})
+# GUI executable
+add_executable(notesearch_gui ${SOURCES} ${HEADERS})
 
-# Set output directory
-set_target_properties(notesearch PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+# Windows GUI libraries
+target_link_libraries(notesearch_gui 
+    shell32 
+    comdlg32 
+    ole32
 )
 
-# Platform-specific libraries
-if(UNIX AND NOT APPLE)
-    # Linux-specific
-    target_link_libraries(notesearch pthread)
-elseif(MINGW)
-    # MinGW needs filesystem library
-    target_link_libraries(notesearch stdc++fs)
+# Hide console window for GUI
+if(MINGW)
+    target_link_libraries(notesearch_gui stdc++fs)
+    set_target_properties(notesearch_gui PROPERTIES
+        LINK_FLAGS "-mwindows"
+    )
+elseif(MSVC)
+    set_target_properties(notesearch_gui PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
 endif()
+
+# Set output directory
+set_target_properties(notesearch_gui PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
 
 # Print configuration
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
