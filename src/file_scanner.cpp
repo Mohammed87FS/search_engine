@@ -61,7 +61,8 @@ FileScanner::scan_directory(const std::filesystem::path &root_path) const {
       }
     }
   } catch (const std::filesystem::filesystem_error &e) {
-   log_error("FileScanner: " + std::string(e.what()));
+    // Silently handle filesystem errors - return empty vector
+    // GUI will show appropriate status message
   }
   
   return files;

@@ -88,7 +88,7 @@ std::string read_file_content(const std::filesystem::path& file_path) {
     // Konvertiert ostringstream zu std::string
     //  Gibt gesamten Datei-Inhalt zurück
     //
-    // RAII file wird automatisch geschlossen (auch bei Exception)
+    // raii file wird automatisch geschlossen (auch bei Exception)
 }
 
 
