@@ -1,8 +1,8 @@
-# Build directories
+
 build/
 cmake-build-*/
 
-# Compiled files
+
 *.o
 *.obj
 *.exe
@@ -13,7 +13,7 @@ cmake-build-*/
 *.so
 *.dylib
 
-# CMake
+
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -21,7 +21,7 @@ Makefile
 *.cmake
 !CMakeLists.txt
 
-# IDE
+
 .vscode/
 .vs/
 .idea/
@@ -30,12 +30,12 @@ Makefile
 *~
 .DS_Store
 
-# Test outputs
+
 *.gcov
 *.gcda
 *.gcno
 
-# Temporary files
+
 *.tmp
 *.log
 *.bak
