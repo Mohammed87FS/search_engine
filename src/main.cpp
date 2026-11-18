@@ -16,10 +16,11 @@ namespace notesearch {
 void print_usage(const char* program_name) { // das stern hier ist asterisk pointer (const char* program_name)
     std::cout << "NoteSearch - Local Full-Text Search Engine\n\n";
     std::cout << "Usage:\n";  // akzeptiert 3 commands.. index, search, interactive
-    std::cout << "  " << program_name << " index <directory>    Index a directory\n";
-    std::cout << "  " << program_name << " search <query>       Search the index\n";
-    std::cout << "  " << program_name << " interactive          Interactive search mode\n";
+    std::cout << "  " << program_name << " index <directory>              Index a directory, show stats\n";
+    std::cout << "  " << program_name << " search <directory> <query>     Index, then search once\n";
+    std::cout << "  " << program_name << " interactive <directory>        Index, then search in a loop\n";
     std::cout << "\n";
+    std::cout << "The index only lives in memory, so every command indexes the directory first.\n\n";
 }
 
 void print_results(const std::vector<SearchResult>& results) {
@@ -98,21 +99,34 @@ int main(int argc, char* argv[]) {
     }
     
     std::string command = argv[1];
-    
+
     // static .. would be better to save/load but this works for now
     // das heisst index lebt so lange wie das programm läuft (also im memory)
+    // darum bekommt jedes command den ordner und indexiert zuerst,
+    // sonst wäre der index bei "search" in einem neuen prozess immer leer
     static DocumentStore doc_store;
     static InvertedIndex index;
-    
-    if (command == "index") {
-        if (argc < 3) { // argc ist die anzahl der argumente die an das programm übergeben werden
-            std::cerr << "Falsch: Bitte einen Pfad zu einem Verzeichnis eingeben!!.\n";
-            return 1; // return 1 ist ein fehlercode
-        }
-        
-        std::filesystem::path dir_path = argv[2]; // std::filesystem::path ist ein objekt der klasse std::filesystem::path,
-        // argv[2] ist der zweite argument der an das programm übergeben wird
-        
+
+    if (command != "index" && command != "search" && command != "interactive") {
+        std::cerr << "Falsch: Unbekanntes kommando '" << command << "'\n\n";
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (argc < 3) { // argc ist die anzahl der argumente die an das programm übergeben werden
+        std::cerr << "Falsch: Bitte einen Pfad zu einem Verzeichnis eingeben!!.\n";
+        return 1; // return 1 ist ein fehlercode
+    }
+
+    // argv[0] = programm, argv[1] = command, argv[2] = ordner, ab argv[3] = suchwörter
+    std::filesystem::path dir_path = argv[2]; // std::filesystem::path ist ein objekt der klasse std::filesystem::path
+
+    if (!std::filesystem::is_directory(dir_path)) {
+        std::cerr << "Falsch: " << dir_path << " ist kein Verzeichnis.\n";
+        return 1;
+    }
+
+    {
         std::cout << "Scanning directory: " << dir_path << "\n";
         auto start = std::chrono::high_resolution_clock::now(); // startet die zeitmessung durch std::chrono::high_resolution_clock::now(), diese gibt die aktuelle zeit in nanosekunden zurück
         
@@ -152,19 +166,29 @@ int main(int argc, char* argv[]) {
         std::cout << "  Documents indexed: " << doc_store.size() << "\n";
         std::cout << "  Unique terms: " << index.vocabulary_size() << "\n";
         std::cout << "  Time: " << duration.count() << " ms\n";
-        
-    } else if (command == "search") {
-        if (argc < 3) {
+    }
+
+    if (command == "index") {
+        return 0;
+    }
+
+    if (doc_store.empty()) {
+        std::cerr << "Falsch: Keine indexierbaren Dateien in " << dir_path << ".\n";
+        return 1;
+    }
+
+    if (command == "search") {
+        if (argc < 4) {
             std::cerr << "Falsch: Bitte eine Suchanfrage eingeben!.\n";
             return 1;
         }
-        
-        if (doc_store.empty()) {
-            std::cerr << "Falsch: Keine Dokumente indexiert. Bitte 'index' kommando zuerst ausführen.\n";
-            return 1;
+
+        // alle restlichen argumente sind die query, also geht auch: search notes pointer referenz
+        std::string query = argv[3];
+        for (int i = 4; i < argc; ++i) {
+            query += " ";
+            query += argv[i];
         }
-        
-        std::string query = argv[2]; // TODO  i dont understand why argv[2] is the query ?? answer: because the command is "search <query>" ??
         SearchEngine engine(index, doc_store);
         
         auto start = std::chrono::high_resolution_clock::now();
@@ -176,19 +200,9 @@ int main(int argc, char* argv[]) {
         print_results(results);
         std::cout << "Search completed in " << duration.count() << " ms\n";
         
-    } else if (command == "interactive") {
-        if (doc_store.empty()) { // doc_store.empty() ist true wenn der document store leer ist
-            std::cerr << "Falsch: Keine Dokumente indexiert. Bitte 'index' kommando zuerst ausführen.\n";
-            return 1;
-        }
-        
+    } else { // interactive
         interactive_mode(doc_store, index);
-        
-    } else {
-        std::cerr << "Falsch: Unbekanntes kommando '" << command << "'\n\n";
-        print_usage(argv[0]);
-        return 1;
     }
-    
+
     return 0;
 }
