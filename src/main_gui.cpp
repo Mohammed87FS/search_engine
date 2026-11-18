@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <shlobj.h>
+#include <shellapi.h>
 #include <objbase.h>
 #include <string>
 #include <vector>
@@ -23,6 +24,7 @@ using namespace notesearch;
 static DocumentStore g_doc_store;
 static InvertedIndex g_index;
 static std::vector<SearchResult> g_current_results;
+static std::string g_root;  // indexierter ordner, damit die anzeige kurze pfade zeigt
 
 // control IDs
 #define ID_SEARCH_EDIT       1001
@@ -74,10 +76,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
-    
+
+    // ordner als argument -> gleich indexieren (notesearch_gui.exe C:\notes)
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv != NULL) {
+        if (argc > 1) {
+            IndexDirectory(hwnd, std::filesystem::path(argv[1]));
+        }
+        LocalFree(argv);
+    }
+
+    HWND hSearchEdit = GetDlgItem(hwnd, ID_SEARCH_EDIT);
+
     // main message loop
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
+        // enter im suchfeld: die taste geht an das EDIT control, nicht an WindowProc,
+        // darum hat das WM_KEYDOWN dort nie gefeuert -> hier im loop abfangen
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_RETURN && msg.hwnd == hSearchEdit) {
+            SendMessage(hwnd, WM_COMMAND, MAKEWPARAM(ID_SEARCH_BUTTON, BN_CLICKED), 0);
+            continue;
+        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -186,19 +206,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
         
-        case WM_KEYDOWN: {
-            if (wParam == VK_RETURN) {
-                HWND hFocus = GetFocus();
-                if (hFocus == GetDlgItem(hwnd, ID_SEARCH_EDIT)) {
-                    // Simulate search button click
-                    SendMessage(hwnd, WM_COMMAND, 
-                        MAKEWPARAM(ID_SEARCH_BUTTON, BN_CLICKED), 0);
-                    return 0;
-                }
-            }
-            break;
-        }
-        
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
@@ -225,7 +232,15 @@ void DisplayResults(HWND hwnd, const std::vector<SearchResult>& results) {
         
         for (size_t i = 0; i < results.size(); ++i) {
             const auto& result = results[i];
-            wss << L"[" << (i + 1) << L"] " << StringToWString(result.path) << L"\n";
+            // pfad relativ zum indexierten ordner, der volle pfad ist zu lang fuer das fenster
+            std::string shown = result.path;
+            if (!g_root.empty() && shown.rfind(g_root, 0) == 0) {
+                shown.erase(0, g_root.size());
+                if (!shown.empty() && (shown[0] == '\\' || shown[0] == '/')) {
+                    shown.erase(0, 1);
+                }
+            }
+            wss << L"[" << (i + 1) << L"] " << StringToWString(shown) << L"\n";
             wss << L"    Score: " << std::fixed << std::setprecision(4) << result.score << L"\n";
             if (!result.snippet.empty()) {
                 wss << L"    " << StringToWString(result.snippet) << L"\n";
@@ -234,7 +249,16 @@ void DisplayResults(HWND hwnd, const std::vector<SearchResult>& results) {
         }
     }
     
-    std::wstring content = wss.str();
+    // das EDIT control braucht \r\n, nur \n zeigt es nicht als neue zeile an
+    // (\r aus den dateien zuerst raus, sonst gibt es \r\r\n)
+    std::wstring raw = wss.str();
+    std::wstring content;
+    content.reserve(raw.size() + raw.size() / 20);
+    for (wchar_t c : raw) {
+        if (c == L'\r') continue;
+        if (c == L'\n') content += L'\r';
+        content += c;
+    }
     SetWindowText(hResults, content.c_str());
 }
 
@@ -250,6 +274,8 @@ void IndexDirectory(HWND hwnd, const std::filesystem::path& dir_path) {
     UpdateStatus(hwnd, "Indexing " + std::to_string(files.size()) + " files...");
     UpdateWindow(hwnd);
     
+    g_root = dir_path.string();
+
     // clear old index
     g_doc_store.clear();
     g_index.clear();
