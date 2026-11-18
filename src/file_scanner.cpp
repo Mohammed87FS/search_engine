@@ -53,9 +53,10 @@ FileScanner::scan_directory(const std::filesystem::path &root_path) const {
         if (should_index(entry.path())) {
           std::string content = read_file(entry.path());
           if (!content.empty()) {
-            files.emplace_back(entry.path(), std::move(content));
-            ++last_stats_.files_indexed;
+            // size vor dem move zaehlen, nach std::move ist content leer
             last_stats_.total_bytes += content.size();
+            ++last_stats_.files_indexed;
+            files.emplace_back(entry.path(), std::move(content));
           }
         }
       }
