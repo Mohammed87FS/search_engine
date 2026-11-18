@@ -37,14 +37,14 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 
-set(SOURCES
+# alles ausser den main dateien, wird von GUI, CLI und tests benutzt
+set(CORE_SOURCES
     src/tokenizer.cpp
     src/util.cpp
     src/document_store.cpp
     src/index.cpp
     src/search.cpp
     src/file_scanner.cpp
-    src/main_gui.cpp
 )
 
 
@@ -58,18 +58,24 @@ set(HEADERS
 )
 
 
-add_executable(notesearch_gui ${SOURCES} ${HEADERS})
+add_library(notesearch_core STATIC ${CORE_SOURCES} ${HEADERS})
+
+if(MINGW)
+    target_link_libraries(notesearch_core PUBLIC stdc++fs)
+endif()
 
 
-target_link_libraries(notesearch_gui 
-    shell32 
-    comdlg32 
+# GUI
+add_executable(notesearch_gui src/main_gui.cpp)
+
+target_link_libraries(notesearch_gui
+    notesearch_core
+    shell32
+    comdlg32
     ole32
 )
 
-
 if(MINGW)
-    target_link_libraries(notesearch_gui stdc++fs)
     set_target_properties(notesearch_gui PROPERTIES
         LINK_FLAGS "-mwindows"
     )
@@ -80,7 +86,19 @@ elseif(MSVC)
 endif()
 
 
-set_target_properties(notesearch_gui PROPERTIES
+# CLI
+add_executable(notesearch src/main.cpp)
+target_link_libraries(notesearch notesearch_core)
+
+
+# tests, laufen im repo ordner wegen notes_examples
+enable_testing()
+add_executable(notesearch_tests tests/test_search.cpp)
+target_link_libraries(notesearch_tests notesearch_core)
+add_test(NAME search_tests COMMAND notesearch_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+
+set_target_properties(notesearch_gui notesearch notesearch_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
