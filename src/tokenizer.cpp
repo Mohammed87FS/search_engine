@@ -25,13 +25,18 @@ namespace notesearch {
         // - reserviert 16 Zeichen (16 ist eine typische Wortlänge)
         // - vrermeidet Reallokationen auch..
         
-        for (char c : text) { 
+        for (char c : text) {
             // Range based for loop.. iteriert über jeden Charakter
-            
-            if (std::isalnum(c)) { 
+
+            unsigned char uc = static_cast<unsigned char>(c);
+            // cast schon hier: isalnum() mit negativem char ist auch Undefined Behavior
+            // (Umlaute in UTF-8 sind Bytes >= 0x80, als char negativ, MSVC Debug bricht da ab)
+
+            if (std::isalnum(uc) || uc >= 0x80) {
                 // Prüft ob Charakter alphanumerisch ist (a to z, A to Z, 0 to9 )
-                
-                current_token += std::tolower(static_cast<unsigned char>(c)); 
+                // oder ein UTF-8 Byte (ä, ö, ü, ß ...), so bleibt "größe" ein Wort statt "gr" + "e"
+
+                current_token += static_cast<char>(std::tolower(uc));
                 // - tolower() konvertiert zu lowercase
                 // - static_cast<unsigned char> = Cast wegen signed/unsigned char Problem
                 //   wichtig weil(verhindert Undefined Behavior bei negativen Werten)
